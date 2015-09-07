@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/awsutil"
+	"github.com/aws/aws-sdk-go/internal/protocol/json/jsonutil"
 	"github.com/aws/aws-sdk-go/service/devicefarm"
 	"github.com/codegangsta/cli"
 	"github.com/olekukonko/tablewriter"
@@ -525,8 +526,8 @@ func lookupDeviceArn(svc *devicefarm.DeviceFarm, deviceName string) (deviceArn s
 	devices := make(map[string]string)
 	for _, m := range resp.Devices {
 		key := fmt.Sprintf("%s - %s", *m.Name, *m.Os)
-		devices[key] = *m.ARN
-		//line := []string{*m.Name, *m.Os, *m.Platform, *m.FormFactor, *m.ARN}
+		devices[key] = *m.Arn
+		//line := []string{*m.Name, *m.Os, *m.Platform, *m.FormFactor, *m.Arn}
 	}
 
 	arn := devices[deviceName]
@@ -548,10 +549,10 @@ func createPoolFromDevice(svc *devicefarm.DeviceFarm, poolName string, deviceNam
 	req := &devicefarm.CreateDevicePoolInput{
 		Name:        aws.String(poolName),
 		Description: aws.String("autocreated pool " + poolName),
-		ProjectARN:  aws.String(projectArn),
+		ProjectArn:  aws.String(projectArn),
 		Rules: []*devicefarm.Rule{
 			&devicefarm.Rule{
-				Attribute: aws.String("ARN"),
+				Attribute: aws.String("Arn"),
 				Operator:  aws.String("IN"),
 				// Value: "[\"arn:aws:devicefarm:us-west-2::device:6A553F3B3D384DB1A780C590FCC7F85D\"]"
 				Value: aws.String("[\"" + deviceArn + "\"]"),
@@ -565,7 +566,7 @@ func createPoolFromDevice(svc *devicefarm.DeviceFarm, poolName string, deviceNam
 		return "", err
 	}
 
-	return *resp.DevicePool.ARN, nil
+	return *resp.DevicePool.Arn, nil
 	//fmt.Println(awsutil.Prettify(resp))
 }
 
@@ -577,12 +578,12 @@ func listProjects(svc *devicefarm.DeviceFarm) {
 
 	//fmt.Println(awsutil.Prettify(resp))
 	table := tablewriter.NewWriter(os.Stdout)
-	table.SetHeader([]string{"Name", "Created", "ARN"})
+	table.SetHeader([]string{"Name", "Created", "Arn"})
 	table.SetAlignment(tablewriter.ALIGN_LEFT)
 	table.SetColWidth(50)
 
 	for _, m := range resp.Projects {
-		line := []string{*m.Name, time.Time.String(*m.Created), *m.ARN}
+		line := []string{*m.Name, time.Time.String(*m.Created), *m.Arn}
 		table.Append(line)
 	}
 	table.Render() // Send output
@@ -594,7 +595,7 @@ func listDevicePools(svc *devicefarm.DeviceFarm, projectArn string) {
 	// PRIVATE: A device pool that is created and managed by the device pool developer.
 
 	pool := &devicefarm.ListDevicePoolsInput{
-		ARN: aws.String(projectArn),
+		Arn: aws.String(projectArn),
 	}
 	resp, err := svc.ListDevicePools(pool)
 
@@ -612,19 +613,19 @@ func listDevices(svc *devicefarm.DeviceFarm) {
 	//fmt.Println(awsutil.Prettify(resp))
 
 	table := tablewriter.NewWriter(os.Stdout)
-	table.SetHeader([]string{"Name", "Os", "Platform", "Form", "ARN"})
+	table.SetHeader([]string{"Name", "Os", "Platform", "Form", "Arn"})
 	table.SetAlignment(tablewriter.ALIGN_LEFT)
 	table.SetColWidth(50)
 
 	for _, m := range resp.Devices {
-		line := []string{*m.Name, *m.Os, *m.Platform, *m.FormFactor, *m.ARN}
+		line := []string{*m.Name, *m.Os, *m.Platform, *m.FormFactor, *m.Arn}
 		table.Append(line)
 	}
 	table.Render() // Send output
 
 	/*
 	   	    {
-	         ARN: "arn:aws:devicefarm:us-west-2::device:A0E6E6E1059E45918208DF75B2B7EF6C",
+	         Arn: "arn:aws:devicefarm:us-west-2::device:A0E6E6E1059E45918208DF75B2B7EF6C",
 	         CPU: {
 	           Architecture: "ARMv7",
 	           Clock: 2265,
@@ -652,7 +653,7 @@ func listDevices(svc *devicefarm.DeviceFarm) {
 func listUploads(svc *devicefarm.DeviceFarm, projectArn string) {
 
 	listReq := &devicefarm.ListUploadsInput{
-		ARN: aws.String(projectArn),
+		Arn: aws.String(projectArn),
 	}
 
 	resp, err := svc.ListUploads(listReq)
@@ -665,7 +666,7 @@ func listUploads(svc *devicefarm.DeviceFarm, projectArn string) {
 func listRuns(svc *devicefarm.DeviceFarm, projectArn string) {
 
 	listReq := &devicefarm.ListRunsInput{
-		ARN: aws.String(projectArn),
+		Arn: aws.String(projectArn),
 	}
 
 	resp, err := svc.ListRuns(listReq)
@@ -674,12 +675,12 @@ func listRuns(svc *devicefarm.DeviceFarm, projectArn string) {
 	//fmt.Println(awsutil.Prettify(resp))
 
 	table := tablewriter.NewWriter(os.Stdout)
-	table.SetHeader([]string{"Name", "Platform", "Type", "Result", "Status", "Date", "ARN"})
+	table.SetHeader([]string{"Name", "Platform", "Type", "Result", "Status", "Date", "Arn"})
 	table.SetAlignment(tablewriter.ALIGN_LEFT)
 	table.SetColWidth(50)
 
 	for _, m := range resp.Runs {
-		line := []string{*m.Name, *m.Platform, *m.Type, *m.Result, *m.Status, time.Time.String(*m.Created), *m.ARN}
+		line := []string{*m.Name, *m.Platform, *m.Type, *m.Result, *m.Status, time.Time.String(*m.Created), *m.Arn}
 		table.Append(line)
 	}
 	table.Render() // Send output
@@ -690,7 +691,7 @@ func listRuns(svc *devicefarm.DeviceFarm, projectArn string) {
 func listTests(svc *devicefarm.DeviceFarm, runArn string) {
 
 	listReq := &devicefarm.ListTestsInput{
-		ARN: aws.String(runArn),
+		Arn: aws.String(runArn),
 	}
 
 	resp, err := svc.ListTests(listReq)
@@ -703,7 +704,7 @@ func listTests(svc *devicefarm.DeviceFarm, runArn string) {
 func listUniqueProblems(svc *devicefarm.DeviceFarm, runArn string) {
 
 	listReq := &devicefarm.ListUniqueProblemsInput{
-		ARN: aws.String(runArn),
+		Arn: aws.String(runArn),
 	}
 
 	resp, err := svc.ListUniqueProblems(listReq)
@@ -716,7 +717,7 @@ func listUniqueProblems(svc *devicefarm.DeviceFarm, runArn string) {
 func listSuites(svc *devicefarm.DeviceFarm, filterArn string) {
 
 	listReq := &devicefarm.ListSuitesInput{
-		ARN: aws.String(filterArn),
+		Arn: aws.String(filterArn),
 	}
 
 	resp, err := svc.ListSuites(listReq)
@@ -787,6 +788,10 @@ func lookupTestPackageType(testType string) (testPackageType string, err error) 
 
 	// BUILTIN_EXPLORER: For Android, an app explorer that will traverse an Android app, interacting with it and capturing screenshots at the same time.
 	// BUILTIN_FUZZ: The built-in fuzz type.
+	if testType == "BUILTIN_FUZZ" {
+		return "BUILTIN_FUZZ", nil
+	}
+
 	return "", errors.New("Could not guess test type, you can use the BUILTIN_FUZZ or BUILTIN_EXPLORER")
 
 }
@@ -794,7 +799,7 @@ func lookupTestPackageType(testType string) (testPackageType string, err error) 
 /* Schedule Run */
 func scheduleRun(svc *devicefarm.DeviceFarm, projectArn string, runName string, deviceArn string, devicePoolArn string, appArn string, appFile string, appType string, testPackageArn string, testPackageFile string, testType string) (scheduleError error) {
 
-	debug := false
+	debug := true
 	// Upload the app file if there is one
 	if appFile != "" {
 
@@ -813,19 +818,22 @@ func scheduleRun(svc *devicefarm.DeviceFarm, projectArn string, runName string, 
 
 		uploadApp, err := uploadPut(svc, appFile, appType, projectArn, "")
 		if err != nil {
+			fmt.Printf("Error: %s", err)
 			return err
 		}
 
 		fmt.Printf("\n")
-		appArn = *uploadApp.ARN
+		appArn = *uploadApp.Arn
 	}
 
 	if devicePoolArn == "" {
 		if deviceArn != "" {
-			// Try to create pool from device ARN
+			// Try to create pool from device Arn
+			fmt.Printf("- Creating device pool %s ", deviceArn)
 			foundArn, err := createPoolFromDevice(svc, deviceArn, deviceArn, projectArn)
 
 			if err != nil {
+				fmt.Printf("Error: %s", err)
 				return err
 			}
 			devicePoolArn = foundArn
@@ -841,8 +849,10 @@ func scheduleRun(svc *devicefarm.DeviceFarm, projectArn string, runName string, 
 		}
 	*/
 
+	fmt.Printf("- Lookup test type %s \n", testType)
 	testPackageType, err := lookupTestPackageType(testType)
 	if err != nil {
+		fmt.Printf("Error: %s", err)
 		return err
 	}
 
@@ -852,17 +862,27 @@ func scheduleRun(svc *devicefarm.DeviceFarm, projectArn string, runName string, 
 		fmt.Printf("- Uploading test-file %s of type %s ", testPackageFile, testPackageType)
 
 		uploadTestPackage, err := uploadPut(svc, testPackageFile, testPackageType, projectArn, "")
+
 		if err != nil {
 			return err
 		}
-		testPackageArn = *uploadTestPackage.ARN
+		testPackageArn = *uploadTestPackage.Arn
 		fmt.Printf("\n")
 	}
 
+	fmt.Printf("- Creating schedule run\n")
+	param := make(map[string]*string)
+	seed := "1234"
+	throttle := "50"
+	event_count := "1500"
+	param["seed"] = &seed
+	param["throttle"] = &throttle
+	param["event_count"] = &event_count
+
 	runTest := &devicefarm.ScheduleRunTest{
-		Type:           aws.String(testType),
-		TestPackageARN: aws.String(testPackageArn),
-		//Parameters: // test parameters
+		Type: aws.String(testType),
+		//TestPackageArn: aws.String(testPackageArn),
+		Parameters: param, // test parameters
 		//Filter: // filter to pass to tests
 	}
 
@@ -875,11 +895,35 @@ func scheduleRun(svc *devicefarm.DeviceFarm, projectArn string, runName string, 
 		fmt.Println(projectArn)
 	}
 
+	locale := "ja_JP"
+	metered := devicefarm.BillingMethodMetered
+	latitude := 35.676833
+	longitude := 139.770139
+
+	bool_true := true
+
+	configuration := &devicefarm.ScheduleRunConfiguration{
+		AuxiliaryApps: []*string{},
+		BillingMethod: &metered,
+		Locale:        &locale,
+		Location: &devicefarm.Location{
+			Latitude:  &latitude,
+			Longitude: &longitude,
+		},
+		Radios: &devicefarm.Radios{
+			Bluetooth: &bool_true,
+			Gps:       &bool_true,
+			Nfc:       &bool_true,
+			Wifi:      &bool_true,
+		},
+	}
+
 	runReq := &devicefarm.ScheduleRunInput{
-		AppARN:        aws.String(appArn),
-		DevicePoolARN: aws.String(devicePoolArn),
+		AppArn:        aws.String(appArn),
+		Configuration: configuration,
+		DevicePoolArn: aws.String(devicePoolArn),
 		Name:          aws.String(runName),
-		ProjectARN:    aws.String(projectArn),
+		ProjectArn:    aws.String(projectArn),
 		Test:          runTest,
 	}
 
@@ -899,13 +943,13 @@ func scheduleRun(svc *devicefarm.DeviceFarm, projectArn string, runName string, 
 	// Now we wait for the run status to go COMPLETED
 	fmt.Print("- Waiting until the tests complete ")
 
-	runArn := *resp.Run.ARN
+	runArn := *resp.Run.Arn
 
 	status := ""
 	for status != "COMPLETED" {
 		time.Sleep(4 * time.Second)
 		infoReq := &devicefarm.GetRunInput{
-			ARN: aws.String(runArn),
+			Arn: aws.String(runArn),
 		}
 
 		fmt.Print(".")
@@ -932,7 +976,7 @@ func listArtifacts(svc *devicefarm.DeviceFarm, filterArn string, artifactType st
 	fmt.Println(filterArn)
 
 	listReq := &devicefarm.ListArtifactsInput{
-		ARN: aws.String(filterArn),
+		Arn: aws.String(filterArn),
 	}
 
 	listReq.Type = aws.String("LOG")
@@ -962,7 +1006,7 @@ func downloadArtifacts(svc *devicefarm.DeviceFarm, filterArn string, artifactTyp
 	}
 
 	listReq := &devicefarm.ListArtifactsInput{
-		ARN: aws.String(filterArn),
+		Arn: aws.String(filterArn),
 	}
 
 	types := []string{"LOG", "SCREENSHOT", "FILE"}
@@ -983,7 +1027,7 @@ func downloadArtifacts(svc *devicefarm.DeviceFarm, filterArn string, artifactTyp
 
 func downloadArtifact(fileName string, artifact *devicefarm.Artifact) {
 
-	url := *artifact.URL
+	url := *artifact.Url
 
 	dirName := path.Dir(fileName)
 	err := os.MkdirAll(dirName, 0777)
@@ -1022,7 +1066,7 @@ func downloadURL(url string, fileName string) {
 		panic(err)
 	}
 	defer resp.Body.Close()
-	debug := false
+	debug := true
 
 	if debug {
 		fmt.Println(resp.Status)
@@ -1041,7 +1085,7 @@ func downloadURL(url string, fileName string) {
 func listJobs(svc *devicefarm.DeviceFarm, runArn string) {
 
 	listReq := &devicefarm.ListJobsInput{
-		ARN: aws.String(runArn),
+		Arn: aws.String(runArn),
 	}
 
 	resp, err := svc.ListJobs(listReq)
@@ -1055,7 +1099,7 @@ func uploadCreate(svc *devicefarm.DeviceFarm, uploadName string, uploadType stri
 
 	uploadReq := &devicefarm.CreateUploadInput{
 		Name:       aws.String(uploadName),
-		ProjectARN: aws.String(projectArn),
+		ProjectArn: aws.String(projectArn),
 		Type:       aws.String(uploadType),
 	}
 
@@ -1069,7 +1113,7 @@ func uploadCreate(svc *devicefarm.DeviceFarm, uploadName string, uploadType stri
 func runInfo(svc *devicefarm.DeviceFarm, runArn string) {
 
 	infoReq := &devicefarm.GetRunInput{
-		ARN: aws.String(runArn),
+		Arn: aws.String(runArn),
 	}
 
 	resp, err := svc.GetRun(infoReq)
@@ -1082,7 +1126,7 @@ func runInfo(svc *devicefarm.DeviceFarm, runArn string) {
 func runReport(svc *devicefarm.DeviceFarm, runArn string) {
 
 	infoReq := &devicefarm.GetRunInput{
-		ARN: aws.String(runArn),
+		Arn: aws.String(runArn),
 	}
 
 	resp, err := svc.GetRun(infoReq)
@@ -1090,15 +1134,16 @@ func runReport(svc *devicefarm.DeviceFarm, runArn string) {
 	failOnErr(err, "error getting run info")
 
 	fmt.Printf("Reporting on run %s\n", *resp.Run.Name)
+	fmt.Printf("Run arn %s\n", runArn)
 	//fmt.Println(awsutil.Prettify(resp))
 
 	jobReq := &devicefarm.ListJobsInput{
-		ARN: aws.String(runArn),
+		Arn: aws.String(runArn),
 	}
 
 	// Find all artifacts
 	artifactReq := &devicefarm.ListArtifactsInput{
-		ARN: aws.String(runArn),
+		Arn: aws.String(runArn),
 	}
 
 	types := []string{"LOG", "SCREENSHOT", "FILE"}
@@ -1113,6 +1158,7 @@ func runReport(svc *devicefarm.DeviceFarm, runArn string) {
 
 		// Store type artifacts
 		artifacts[artifactType] = append(artifacts[artifactType], *artifactResp)
+
 	}
 
 	respJob, err := svc.ListJobs(jobReq)
@@ -1121,15 +1167,15 @@ func runReport(svc *devicefarm.DeviceFarm, runArn string) {
 	// Find all jobs within this run
 	for _, job := range respJob.Jobs {
 
-		//fmt.Println("==========================================")
+		fmt.Println("==========================================")
 		time.Sleep(2 * time.Second)
 
 		jobFriendlyName := fmt.Sprintf("%s - %s - %s", *job.Name, *job.Device.Model, *job.Device.Os)
 
-		//fmt.Println(awsutil.Prettify(job))
+		fmt.Println(awsutil.Prettify(job))
 
 		suiteReq := &devicefarm.ListSuitesInput{
-			ARN: aws.String(*job.ARN),
+			Arn: aws.String(*job.Arn),
 		}
 		suiteResp, err := svc.ListSuites(suiteReq)
 		failOnErr(err, "error getting run info")
@@ -1140,21 +1186,49 @@ func runReport(svc *devicefarm.DeviceFarm, runArn string) {
 				message = *suite.Message
 			}
 
-			debug := false
+			debug := true
 			if debug {
-				fmt.Printf("%s -> %s : %s \n----> %s\n", jobFriendlyName, *suite.Name, message, *suite.ARN)
+				fmt.Printf("%s -> %s : %s \n----> %s\n", jobFriendlyName, *suite.Name, message, *suite.Arn)
 			}
 			dirPrefix := fmt.Sprintf("report/%s/%s", jobFriendlyName, *suite.Name)
 			downloadArtifactsForSuite(dirPrefix, artifacts, *suite)
 		}
 
-		//fmt.Println(awsutil.Prettify(suiteResp))
+		fmt.Println(awsutil.Prettify(suiteResp))
 	}
 
+	params := &devicefarm.ListUniqueProblemsInput{
+		Arn: aws.String(runArn), // Required
+	}
+
+	problems, err := svc.ListUniqueProblems(params)
+
+	if err != nil {
+		// Print the error, cast err to awserr.Error to get the Code and
+		// Message from an error.
+		fmt.Println(err.Error())
+		return
+	}
+
+	// Pretty-print the response data.
+	fmt.Println(awsutil.Prettify(problems))
+	problemsJson, _ := jsonutil.BuildJSON(problems)
+	writeFile(problemsJson, "./report/unique_problems.json")
+}
+
+func writeFile(body []byte, filePath string) {
+	f, _ := os.Create(filePath)
+
+	defer f.Close()
+
+	wroteBytes, _ := f.Write(body)
+	fmt.Printf("wrote %d bytes to %s \n", wroteBytes, filePath)
+
+	f.Sync()
 }
 
 func downloadArtifactsForSuite(dirPrefix string, allArtifacts map[string][]devicefarm.ListArtifactsOutput, suite devicefarm.Suite) {
-	suiteArn := *suite.ARN
+	suiteArn := *suite.Arn
 	artifactTypes := []string{"LOG", "SCREENSHOT", "FILE"}
 
 	r := strings.NewReplacer(":suite:", ":artifact:")
@@ -1165,7 +1239,7 @@ func downloadArtifactsForSuite(dirPrefix string, allArtifacts map[string][]devic
 		for _, artifactList := range typedArtifacts {
 			count := 0
 			for _, artifact := range artifactList.Artifacts {
-				if strings.HasPrefix(*artifact.ARN, artifactPrefix) {
+				if strings.HasPrefix(*artifact.Arn, artifactPrefix) {
 					//pathFull := strings.Split(suiteArn, ":")[6]
 					//pathSuffix := strings.Split(pathFull, "/")
 					//runId := pathSuffix[0]
@@ -1189,7 +1263,7 @@ func downloadArtifactsForSuite(dirPrefix string, allArtifacts map[string][]devic
 func runStatus(svc *devicefarm.DeviceFarm, runArn string) {
 
 	infoReq := &devicefarm.GetRunInput{
-		ARN: aws.String(runArn),
+		Arn: aws.String(runArn),
 	}
 
 	resp, err := svc.GetRun(infoReq)
@@ -1202,7 +1276,7 @@ func runStatus(svc *devicefarm.DeviceFarm, runArn string) {
 func jobInfo(svc *devicefarm.DeviceFarm, jobArn string) {
 
 	infoReq := &devicefarm.GetJobInput{
-		ARN: aws.String(jobArn),
+		Arn: aws.String(jobArn),
 	}
 
 	resp, err := svc.GetJob(infoReq)
@@ -1215,7 +1289,7 @@ func jobInfo(svc *devicefarm.DeviceFarm, jobArn string) {
 func suiteInfo(svc *devicefarm.DeviceFarm, suiteArn string) {
 
 	infoReq := &devicefarm.GetJobInput{
-		ARN: aws.String(suiteArn),
+		Arn: aws.String(suiteArn),
 	}
 
 	resp, err := svc.GetJob(infoReq)
@@ -1228,7 +1302,7 @@ func suiteInfo(svc *devicefarm.DeviceFarm, suiteArn string) {
 func uploadInfo(svc *devicefarm.DeviceFarm, uploadArn string) {
 
 	uploadReq := &devicefarm.GetUploadInput{
-		ARN: aws.String(uploadArn),
+		Arn: aws.String(uploadArn),
 	}
 
 	resp, err := svc.GetUpload(uploadReq)
@@ -1240,7 +1314,7 @@ func uploadInfo(svc *devicefarm.DeviceFarm, uploadArn string) {
 /* Upload a file */
 func uploadPut(svc *devicefarm.DeviceFarm, uploadFilePath string, uploadType string, projectArn string, uploadName string) (upload *devicefarm.Upload, err error) {
 
-	debug := false
+	debug := true
 
 	// Read File
 	file, err := os.Open(uploadFilePath)
@@ -1268,7 +1342,7 @@ func uploadPut(svc *devicefarm.DeviceFarm, uploadFilePath string, uploadType str
 
 	uploadReq := &devicefarm.CreateUploadInput{
 		Name:        aws.String(uploadName),
-		ProjectARN:  aws.String(projectArn),
+		ProjectArn:  aws.String(projectArn),
 		Type:        aws.String(uploadType),
 		ContentType: aws.String("application/octet-stream"),
 	}
@@ -1282,7 +1356,7 @@ func uploadPut(svc *devicefarm.DeviceFarm, uploadFilePath string, uploadType str
 
 	uploadInfo := uploadResp.Upload
 
-	upload_url := *uploadInfo.URL
+	upload_url := *uploadInfo.Url
 
 	if debug {
 		fmt.Println("- Upload Response result:")
@@ -1333,7 +1407,7 @@ func uploadPut(svc *devicefarm.DeviceFarm, uploadFilePath string, uploadType str
 		fmt.Print(".")
 		time.Sleep(4 * time.Second)
 		uploadReq := &devicefarm.GetUploadInput{
-			ARN: uploadInfo.ARN,
+			Arn: uploadInfo.Arn,
 		}
 
 		resp, err := svc.GetUpload(uploadReq)
@@ -1345,6 +1419,7 @@ func uploadPut(svc *devicefarm.DeviceFarm, uploadFilePath string, uploadType str
 		status = *resp.Upload.Status
 	}
 
+	fmt.Println("uploadPut is succeeded")
 	return uploadResp.Upload, nil
 }
 

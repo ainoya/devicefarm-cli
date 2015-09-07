@@ -6,4 +6,6 @@ devicefarm-cli
 ENV.sh
 dist/
 reports/
+report/
 .DS_Store
+*.png
